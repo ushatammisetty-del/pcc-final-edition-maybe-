@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Praneeth Creativity Certificates</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: Poppins, sans-serif;
+  background: linear-gradient(135deg,#667eea,#764ba2);
+  min-height: 100vh;
+  color:#222;
+}
+
+/* ---------- AUTH ---------- */
+#auth {
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.card {
+  background:white;
+  padding:30px;
+  border-radius:18px;
+  width:340px;
+  box-shadow:0 20px 40px rgba(0,0,0,.25);
+  text-align:center;
+}
+
+input, button, textarea {
+  width:100%;
+  padding:12px;
+  margin:8px 0;
+  border-radius:10px;
+  border:1px solid #ddd;
+  font-family:Poppins;
+}
+
+button {
+  border:none;
+  background:linear-gradient(135deg,#667eea,#764ba2);
+  color:white;
+  cursor:pointer;
+}
+
+#msg { color:crimson; font-size:.85em }
+
+/* ---------- MAIN ---------- */
+#app { display:none }
+
+header {
+  padding:15px 25px;
+  color:white;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.pfp {
+  width:42px;height:42px;
+  background:white;color:#764ba2;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:bold;
+  cursor:pointer;
+}
+
+.menu {
+  position:absolute;
+  right:25px; top:70px;
+  background:white;
+  border-radius:10px;
+  display:none;
+}
+
+.menu div {
+  padding:12px 20px;
+  cursor:pointer;
+}
+.menu div:hover { background:#eee }
+
+.grid {
+  padding:25px;
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:20px;
+}
+
+.box {
+  background:white;
+  padding:20px;
+  border-radius:18px;
+  box-shadow:0 10px 25px rgba(0,0,0,.2);
+  cursor:pointer;
+  transition:.2s;
+}
+.box:hover { transform:translateY(-5px) }
+
+.hidden { display:none }
+
+/* ---------- DRAW ---------- */
+#drawArea {
+  padding:20px;
+}
+canvas {
+  border:2px solid #444;
+  border-radius:10px;
+  background:white;
+  touch-action:none;
+}
+
+/* ---------- QUIZ ---------- */
+.quiz button {
+  background:#667eea;
+}
+</style>
+</head>
+
+<body>
+
+<!-- AUTH -->
+<div id="auth">
+  <div class="card">
+    <h2>PCC</h2>
+    <p>Praneeth Creativity Certificates</p>
+    <input id="user" placeholder="Username">
+    <input id="pass" type="password" placeholder="Password">
+    <button onclick="signup()">Sign Up</button>
+    <button onclick="login()">Login</button>
+    <div id="msg"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+<header>
+  <h2>PCC Dashboard</h2>
+  <div class="pfp" onclick="toggleMenu()" id="pfp">U</div>
+</header>
+
+<div class="menu" id="menu">
+  <div onclick="logout()">Logout</div>
+</div>
+
+<!-- HOME -->
+<div id="home" class="grid">
+  <div class="box" onclick="openDraw()">🎨 Drawing Contest</div>
+  <div class="box" onclick="openQuiz('thinking')">🧠 Thinking Contest</div>
+  <div class="box" onclick="openQuiz('science')">🔬 Science Contest</div>
+  <div class="box" onclick="openQuiz('sculpt')">🗿 Sculpt Contest</div>
+</div>
+
+<!-- DRAW -->
+<div id="draw" class="hidden">
+  <div id="drawArea">
+    <button onclick="back()">⬅ Back</button><br><br>
+    Color: <input type="color" id="color">
+    <button onclick="erase()">Eraser</button>
+    <button onclick="clearCanvas()">Clear</button><br><br>
+    <canvas id="canvas" width="320" height="400"></canvas><br>
+    <button onclick="openSubmit('draw')">Submit Drawing</button>
+  </div>
+</div>
+
+<!-- QUIZ -->
+<div id="quiz" class="hidden quiz">
+  <div style="padding:20px">
+    <button onclick="back()">⬅ Back</button>
+    <h3 id="qTitle"></h3>
+    <p id="q"></p>
+    <button onclick="ans(0)" id="a0"></button>
+    <button onclick="ans(1)" id="a1"></button>
+    <button onclick="ans(2)" id="a2"></button><br><br>
+    <button onclick="openSubmit('quiz')">Submit Quiz</button>
+  </div>
+</div>
+
+<!-- SUBMIT WORK -->
+<div id="submitWork" class="hidden">
+  <div style="padding:20px">
+    <button onclick="back()">⬅ Back</button>
+    <h3>Submit Your Work</h3>
+    <p id="submitType"></p>
+    <textarea id="submissionText" placeholder="Describe your work..." rows="4"></textarea>
+    <div id="submissionPreview" style="margin:10px 0;"></div>
+    <button onclick="submitWork()">Submit</button>
+    <div id="submitMsg" style="color:green; margin-top:10px;"></div>
+  </div>
+</div>
+
+</div>
+
+<script>
+/* ---------- AUTH ---------- */
+async function hash(p){return [...new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(p)))].map(b=>b.toString(16).padStart(2,"0")).join("")}
+let users=JSON.parse(localStorage.users||"{}")
+
+async function signup(){
+  if(users[user.value]){msg.innerText="User exists";return}
+  users[user.value]=await hash(pass.value)
+  localStorage.users=JSON.stringify(users)
+  msg.innerText="Signed up!"
+}
+
+async function login(){
+  if(users[user.value]!==await hash(pass.value)){msg.innerText="Wrong login";return}
+  localStorage.current=user.value
+  start()
+}
+
+function start(){
+  auth.style.display="none"
+  app.style.display="block"
+  pfp.innerText=localStorage.current[0].toUpperCase()
+}
+if(localStorage.current) start()
+
+function logout(){localStorage.removeItem("current");location.reload()}
+function toggleMenu(){menu.style.display=menu.style.display=="block"?"none":"block"}
+
+/* ---------- NAV ---------- */
+function back(){draw.classList.add("hidden");quiz.classList.add("hidden");submitWork.classList.add("hidden");home.classList.remove("hidden")}
+
+/* ---------- DRAW ---------- */
+let ctx, drawing=false, eraseMode=false
+const canvas=document.getElementById("canvas")
+ctx=canvas.getContext("2d")
+
+canvas.onpointerdown=e=>{drawing=true;ctx.beginPath();ctx.moveTo(e.offsetX,e.offsetY)}
+canvas.onpointermove=e=>{
+  if(!drawing)return
+  ctx.strokeStyle=eraseMode?"white":color.value
+  ctx.lineWidth=eraseMode?20:3
+  ctx.lineTo(e.offsetX,e.offsetY)
+  ctx.stroke()
+}
+canvas.onpointerup=()=>drawing=false
+
+function erase(){eraseMode=true}
+function clearCanvas(){ctx.clearRect(0,0,canvas.width,canvas.height)}
+function openDraw(){home.classList.add("hidden");draw.classList.remove("hidden")}
+
+/* ---------- QUIZ ---------- */
+const quizzes={
+  thinking:[["What comes next: 2,4,8,?",["10","16","12"],1]],
+  science:[["Water chemical formula?",["H2O","CO2","NaCl"],0]],
+  sculpt:[["Best sculpt material?",["Clay","Water","Paper"],0]]
+}
+let qi=0,curQ
+function openQuiz(type){
+  curQ=quizzes[type][0]
+  home.classList.add("hidden")
+  quiz.classList.remove("hidden")
+  qTitle.innerText=type.toUpperCase()+" CONTEST"
+  showQ()
+}
+function showQ(){
+  q.innerText=curQ[0]
+  a0.innerText=curQ[1][0]
+  a1.innerText=curQ[1][1]
+  a2.innerText=curQ[1][2]
+}
+function ans(i){
+  alert(i==curQ[2]?"Correct!":"Wrong!")
+}
+
+/* ---------- SUBMISSION ---------- */
+function openSubmit(type){
+  home.classList.add("hidden");
+  draw.classList.add("hidden");
+  quiz.classList.add("hidden");
+  submitWork.classList.remove("hidden");
+  submitType.innerText = type === "draw" ? "Drawing Submission" : "Quiz Submission";
+
+  if(type === "draw"){
+    const imgData = canvas.toDataURL();
+    submissionPreview.innerHTML = `<img src="${imgData}" style="max-width:100%; border:1px solid #ccc;"/>`;
+  } else {
+    submissionPreview.innerHTML = "";
+  }
+}
+
+function submitWork(){
+  const description = submissionText.value.trim();
+  let data = {user: localStorage.current, description: description, type: submitType.innerText};
+
+  if(submitType.innerText === "Drawing Submission"){
+    data.image = canvas.toDataURL();
+  } else {
+    data.quiz = curQ ? {question: curQ[0], selectedAnswer: submissionText.value} : null;
+  }
+
+  let submissions = JSON.parse(localStorage.submissions || "[]");
+  submissions.push(data);
+  localStorage.submissions = JSON.stringify(submissions);
+
+  submitMsg.innerText = "Your work has been submitted!";
+  submissionText.value = "";
+  submissionPreview.innerHTML = "";
+}
+</script>
+
+</body>
+</html>
